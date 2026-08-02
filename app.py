@@ -328,8 +328,8 @@ elif page == "Medical Report Generator":
                                 pdf.set_font("Arial", 'B', 8)
                                 pdf.cell(0, 5, "Note:", ln=True)
                                 pdf.set_font("Arial", 'B', 7)
-                                pdf.cell(0, 4, "• 1. Foreign worker with a medical history of the Category 1 Diseases is deemed to be unsuitable for employment in Malaysia.", ln=True)
-                                pdf.cell(0, 4, "• 2. However, foreign worker who gives a medical history of Hepatitis B, Hepatitis C, Syphilis, HIV, Malaria or Filariasis but does not", ln=True)
+                                pdf.cell(0, 4, "- 1. Foreign worker with a medical history of the Category 1 Diseases is deemed to be unsuitable for employment in Malaysia.", ln=True)
+                                pdf.cell(0, 4, "- 2. However, foreign worker who gives a medical history of Hepatitis B, Hepatitis C, Syphilis, HIV, Malaria or Filariasis but does not", ln=True)
                                 pdf.cell(0, 4, "show any clinical evidence of the above and the blood test results are negative, the foreign worker is deemed to be suitable for employment in Malaysia.", ln=True)
                                 
                                 # 6. PART V
