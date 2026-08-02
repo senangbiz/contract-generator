@@ -116,7 +116,20 @@ if uploaded_file is not None:
                             )
                             
                             # Write formatted text to PDF
-                            pdf.multi_cell(0, 6, contract_content)
+                            lines = contract_content.split('\n', 1)
+                            if lines:
+                                title = lines[0].strip()
+                                body = lines[1] if len(lines) > 1 else ""
+                                
+                                # Center the title and make it bold
+                                pdf.set_font("Arial", 'B', 12)
+                                pdf.cell(0, 10, title, ln=True, align='C')
+                                
+                                # Print the rest of the body
+                                pdf.set_font("Arial", size=11)
+                                pdf.multi_cell(0, 6, body)
+                            else:
+                                pdf.multi_cell(0, 6, contract_content)
                             
                             # Get the PDF content as a string (latin1 encoding is standard for fpdf 1.7)
                             pdf_bytes = pdf.output(dest='S').encode('latin1')

@@ -67,7 +67,20 @@ for index, row in df.iterrows():
     )
     
     # Write the formatted text to the PDF
-    pdf.multi_cell(0, 6, contract_content)
+    lines = contract_content.split('\n', 1)
+    if lines:
+        title = lines[0].strip()
+        body = lines[1] if len(lines) > 1 else ""
+        
+        # Center the title and make it bold
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, title, ln=True, align='C')
+        
+        # Print the rest of the body
+        pdf.set_font("Arial", size=11)
+        pdf.multi_cell(0, 6, body)
+    else:
+        pdf.multi_cell(0, 6, contract_content)
     
     # Save the new PDF document
     filename = f"Employment_Contract_{full_name}.pdf"
