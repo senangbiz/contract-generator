@@ -3,14 +3,19 @@ import pandas as pd
 from fpdf import FPDF
 import io
 import zipfile
+import random
+import string
 
-st.set_page_config(page_title="Contract Generator", page_icon="📄")
+st.set_page_config(page_title="Generator Dashboard", page_icon="📄", layout="wide")
 
-st.title("📄 Worker Contract Generator")
-st.write("Upload your Excel file to generate employment contracts.")
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator"])
 
-# Default template from the script
-DEFAULT_TEMPLATE = """EMPLOYMENT CONTRACT
+if page == "Contract Generator":
+    st.title("📄 Worker Contract Generator")
+    st.write("Upload your Excel file to generate employment contracts.")
+
+    DEFAULT_TEMPLATE = """EMPLOYMENT CONTRACT
 
 This agreement is made and entered on 1 January 2025 between ARIANA GLOBAL Malaysia,
 (herein called the company) through our lawful attorney present in Bangladesh First Tours and
@@ -70,82 +75,311 @@ Designation: Manager
 Signature: Melissa
 """
 
-# Text area so the user can see and optionally modify the template
-with st.expander("View / Edit Contract Template"):
-    template_text = st.text_area("Template Text", value=DEFAULT_TEMPLATE, height=400)
+    with st.expander("View / Edit Contract Template"):
+        template_text = st.text_area("Template Text", value=DEFAULT_TEMPLATE, height=400)
 
-uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"])
+    uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="contract_upload")
 
-if uploaded_file is not None:
-    # Load the excel file
-    try:
-        df = pd.read_excel(uploaded_file)
-        
-        # Clean up column names by removing asterisks and extra spaces
-        df.columns = [str(col).replace('*', '').strip() for col in df.columns]
-        
-        st.success("File uploaded successfully! Here is a preview of your data:")
-        st.dataframe(df.head())
-        
-        # Check for required columns
-        required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'Passport Issue Date']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        
-        if missing_columns:
-            st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
-        else:
-            if st.button("Generate PDF Contracts"):
-                with st.spinner("Generating contracts..."):
-                    # Create an in-memory zip file to store all the generated PDFs
-                    zip_buffer = io.BytesIO()
-                    with zipfile.ZipFile(zip_buffer, "w") as zf:
-                        for index, row in df.iterrows():
-                            # Create PDF
-                            pdf = FPDF()
-                            pdf.add_page()
-                            pdf.set_font("Arial", size=11)
-                            
-                            full_name = f"{row['First Name']} {row['Last Name']}"
-                            # Format template
-                            contract_content = template_text.format(
-                                name=full_name,
-                                nationality=row['Nationality'],
-                                passport=row['Passport No'],
-                                place_of_issue=row['Nationality'],
-                                date_of_issue=row['Passport Issue Date']
-                            )
-                            
-                            # Write formatted text to PDF
-                            lines = contract_content.split('\n', 1)
-                            if lines:
-                                title = lines[0].strip()
-                                body = lines[1] if len(lines) > 1 else ""
-                                
-                                # Center the title and make it bold
-                                pdf.set_font("Arial", 'B', 12)
-                                pdf.cell(0, 10, title, ln=True, align='C')
-                                
-                                # Print the rest of the body
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+            
+            st.success("File uploaded successfully! Here is a preview of your data:")
+            st.dataframe(df.head())
+            
+            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'Passport Issue Date']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
+            else:
+                if st.button("Generate PDF Contracts"):
+                    with st.spinner("Generating contracts..."):
+                        zip_buffer = io.BytesIO()
+                        with zipfile.ZipFile(zip_buffer, "w") as zf:
+                            for index, row in df.iterrows():
+                                pdf = FPDF()
+                                pdf.add_page()
                                 pdf.set_font("Arial", size=11)
-                                pdf.multi_cell(0, 6, body)
-                            else:
-                                pdf.multi_cell(0, 6, contract_content)
-                            
-                            # Get the PDF content as a string (latin1 encoding is standard for fpdf 1.7)
-                            pdf_bytes = pdf.output(dest='S').encode('latin1')
-                            
-                            filename = f"Employment_Contract_{full_name}.pdf"
-                            # Add to zip file
-                            zf.writestr(filename, pdf_bytes)
-                    
-                    st.success("All contracts generated successfully!")
-                    
-                    # Provide a download button for the zip file
-                    st.download_button(
-                        label="⬇️ Download All Contracts (ZIP)",
-                        data=zip_buffer.getvalue(),
-                        file_name="contracts.zip",
-                        mime="application/zip"
-                    )
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+                                
+                                full_name = f"{row['First Name']} {row['Last Name']}"
+                                contract_content = template_text.format(
+                                    name=full_name,
+                                    nationality=row['Nationality'],
+                                    passport=row['Passport No'],
+                                    place_of_issue=row['Nationality'],
+                                    date_of_issue=row['Passport Issue Date']
+                                )
+                                
+                                lines = contract_content.split('\n', 1)
+                                if lines:
+                                    title = lines[0].strip()
+                                    body = lines[1] if len(lines) > 1 else ""
+                                    pdf.set_font("Arial", 'B', 12)
+                                    pdf.cell(0, 10, title, ln=True, align='C')
+                                    pdf.set_font("Arial", size=11)
+                                    pdf.multi_cell(0, 6, body)
+                                else:
+                                    pdf.multi_cell(0, 6, contract_content)
+                                
+                                pdf_bytes = pdf.output(dest='S').encode('latin1')
+                                filename = f"Employment_Contract_{full_name}.pdf"
+                                zf.writestr(filename, pdf_bytes)
+                        
+                        st.success("All contracts generated successfully!")
+                        st.download_button("⬇️ Download All Contracts (ZIP)", data=zip_buffer.getvalue(), file_name="contracts.zip", mime="application/zip")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+elif page == "Medical Report Generator":
+    st.title("🏥 Medical Report Generator")
+    st.write("Upload your Excel file to generate FOMEMA Medical Reports.")
+    
+    st.info("Note: The Medical Report layout is strictly formatted according to FOMEMA standards.")
+
+    uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="medical_upload")
+
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+            
+            st.success("File uploaded successfully! Here is a preview of your data:")
+            st.dataframe(df.head())
+            
+            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'Date of Birth', 'Gender', 'Sector']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
+            else:
+                if st.button("Generate Medical Reports"):
+                    with st.spinner("Generating medical reports..."):
+                        zip_buffer = io.BytesIO()
+                        with zipfile.ZipFile(zip_buffer, "w") as zf:
+                            for index, row in df.iterrows():
+                                pdf = FPDF()
+                                pdf.add_page()
+                                pdf.set_auto_page_break(auto=True, margin=15)
+                                
+                                # 1. Header FOMEMA
+                                pdf.set_font("Arial", 'BI', 24)
+                                pdf.cell(0, 15, "FOMEMA", ln=True, align='L')
+                                pdf.ln(5)
+                                
+                                # 2. Boxed Title
+                                pdf.set_font("Arial", 'B', 12)
+                                pdf.cell(0, 10, "FOMEMA REPORT", border=1, ln=True, align='C')
+                                pdf.ln(5)
+                                
+                                # 3. DISCLAIMER
+                                pdf.set_font("Arial", 'B', 10)
+                                pdf.cell(0, 6, "DISCLAIMER", ln=True, align='C')
+                                
+                                pdf.set_font("Arial", 'B', 7)
+                                disclaimer_text = (
+                                    "This FOMEMA report (\"this Report\") has been generated automatically by computer software and may contain inaccuracies or errors. It is not intended to replace the expertise and judgment of healthcare professionals. This Report is provided to you on an \"as is\" and \"as available\" basis at the sole discretion of FOMEMA Sdn. Bhd. (\"the Company\") and the Company has not verified this Report for accuracy and does not warrant the accuracy of, or make any other warranties or representations regarding this Report. The information contained in this record is provided for informational and reference purposes only and should not be used for diagnosing or treating any medical condition. Any reliance on the information contained herein is solely at your own risk. You are solely responsible for any interpretation, use and/or reliance made based on this Report and FOMEMA accepts no liability for any loss or damage arising from the interpretation, use, or reliance on the report. This includes any direct, indirect, incidental, consequential, or punitive damages that may result from the use of this record or its contents. It is recommended that you consult a qualified healthcare professional for any medical advice, diagnosis or treatment. Kindly refer to the examining doctor if further clarification is required.\n\n"
+                                    "The receipt of this Report shall be deemed as the Recipient's true acknowledgement and acceptance of this disclaimer."
+                                )
+                                pdf.multi_cell(0, 3.5, disclaimer_text)
+                                pdf.ln(8)
+                                
+                                # 4. PART I
+                                pdf.set_font("Arial", 'BU', 10)
+                                pdf.cell(0, 6, "PART I. FOREIGN WORKER INFORMATION", ln=True, align='C')
+                                pdf.ln(5)
+                                
+                                # Columns setup
+                                pdf.set_font("Arial", 'B', 9)
+                                col1_x = 10
+                                col1_val_x = 50
+                                col2_x = 100
+                                col2_val_x = 145
+                                
+                                full_name = f"{row.get('First Name', '')} {row.get('Last Name', '')}".strip()
+                                worker_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+                                
+                                # Row 1
+                                y = pdf.get_y()
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Worker Name")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, f": {full_name}")
+                                
+                                pdf.set_xy(col2_x, y)
+                                pdf.cell(45, 6, "Worker Code")
+                                pdf.set_xy(col2_val_x, y)
+                                pdf.cell(45, 6, f": {worker_code}")
+                                
+                                # Row 2
+                                y += 8
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Country of Origin")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, f": {row.get('Nationality', '')}")
+                                
+                                pdf.set_xy(col2_x, y)
+                                pdf.cell(45, 6, "Date of Birth")
+                                dob = str(row.get('Date of Birth', '')).split()[0]
+                                pdf.set_xy(col2_val_x, y)
+                                pdf.cell(45, 6, f": {dob}")
+                                
+                                # Row 3
+                                y += 8
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Passport Number")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, f": {row.get('Passport No', '')}")
+                                
+                                pdf.set_xy(col2_x, y)
+                                pdf.cell(45, 6, "Gender")
+                                pdf.set_xy(col2_val_x, y)
+                                pdf.cell(45, 6, f": {row.get('Gender', '')}")
+                                
+                                # Row 4
+                                y += 8
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Job Type")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, f": {row.get('Sector', '')}")
+                                
+                                pdf.set_xy(col2_x, y)
+                                pdf.cell(45, 6, "Employer Code")
+                                pdf.set_xy(col2_val_x, y)
+                                pdf.cell(45, 6, ": E6ED012445")
+                                
+                                # Row 5
+                                y += 8
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Doctor Code")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, ": D4ES000306")
+                                
+                                pdf.set_xy(col2_x, y)
+                                pdf.cell(45, 6, "Physical Examination Date")
+                                pdf.set_xy(col2_val_x, y)
+                                pdf.cell(45, 6, ": 15/06/2026")
+                                
+                                # Row 6
+                                y += 8
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Transaction ID")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, ": 20240729860413")
+                                
+                                pdf.set_xy(col2_x, y)
+                                pdf.cell(45, 6, "Certification Date")
+                                pdf.set_xy(col2_val_x, y)
+                                pdf.cell(45, 6, ": 16/06/2026")
+                                
+                                # Row 7
+                                y += 8
+                                pdf.set_xy(col1_x, y)
+                                pdf.cell(40, 6, "Passport Expiry Date")
+                                pdf.set_xy(col1_val_x, y)
+                                pdf.cell(45, 6, ": -")
+                                
+                                pdf.set_y(y + 15)
+                                
+                                # 5. PART II
+                                pdf.set_font("Arial", 'BU', 10)
+                                pdf.cell(0, 6, "PART II. MEDICAL HISTORY", ln=True, align='C')
+                                pdf.ln(5)
+                                
+                                pdf.set_font("Arial", 'B', 8)
+                                pdf.cell(100, 6, "1.       CATEGORY 1 DISEASES")
+                                pdf.cell(30, 6, "YES", align='C')
+                                pdf.cell(30, 6, "NO", align='C')
+                                pdf.cell(30, 6, "DATE (DD/MM/YYYY)", align='C')
+                                pdf.ln(8)
+                                
+                                diseases = [
+                                    ("1.1", "TUBERCULOSIS"),
+                                    ("1.2", "VIRAL HEPATITIS B"),
+                                    ("1.3", "VIRAL HEPATITIS C"),
+                                    ("1.4", "SYPHILIS"),
+                                    ("1.5", "HIV"),
+                                    ("1.6", "MALARIA"),
+                                    ("1.7", "FILARIASIS")
+                                ]
+                                
+                                pdf.set_font("Arial", '', 8)
+                                for num, disease in diseases:
+                                    y = pdf.get_y()
+                                    pdf.set_xy(10, y)
+                                    pdf.cell(10, 6, num)
+                                    pdf.set_xy(20, y)
+                                    pdf.cell(80, 6, disease)
+                                    
+                                    # YES Checkbox (empty)
+                                    pdf.rect(123, y + 1.5, 3, 3)
+                                    
+                                    # NO Checkbox (checked with an X)
+                                    pdf.rect(153, y + 1.5, 3, 3)
+                                    pdf.set_xy(153, y)
+                                    pdf.set_font("Arial", 'B', 7)
+                                    pdf.cell(3, 6, "X", align='C')
+                                    pdf.set_font("Arial", '', 8)
+                                    
+                                    pdf.ln(5)
+                                
+                                pdf.ln(5)
+                                pdf.set_font("Arial", 'B', 8)
+                                pdf.cell(0, 5, "Note:", ln=True)
+                                pdf.set_font("Arial", 'B', 7)
+                                pdf.cell(0, 4, "• 1. Foreign worker with a medical history of the Category 1 Diseases is deemed to be unsuitable for employment in Malaysia.", ln=True)
+                                pdf.cell(0, 4, "• 2. However, foreign worker who gives a medical history of Hepatitis B, Hepatitis C, Syphilis, HIV, Malaria or Filariasis but does not", ln=True)
+                                pdf.cell(0, 4, "show any clinical evidence of the above and the blood test results are negative, the foreign worker is deemed to be suitable for employment in Malaysia.", ln=True)
+                                
+                                # 6. PART V
+                                pdf.ln(10)
+                                pdf.set_font("Arial", 'BU', 10)
+                                pdf.cell(0, 6, "PART V: CERTIFICATION BY DOCTOR (cont'd)", ln=True, align='C')
+                                pdf.ln(5)
+                                
+                                y = pdf.get_y()
+                                pdf.set_font("Arial", 'B', 7)
+                                pdf.set_xy(140, y)
+                                pdf.cell(20, 6, "UNSUITABLE", align='C')
+                                pdf.set_xy(170, y)
+                                pdf.cell(20, 6, "SUITABLE", align='C')
+                                pdf.ln(8)
+                                
+                                y = pdf.get_y()
+                                pdf.set_font("Arial", 'B', 8)
+                                pdf.set_xy(10, y)
+                                pdf.cell(10, 4, "23.")
+                                pdf.set_xy(20, y)
+                                pdf.multi_cell(110, 4, "AFTER REVIEWING THE MEDICAL EXAMINATION REPORT,\nI HEREBY CERTIFY THIS FOREIGN WORKER TO BE\nMEDICALLY FOR EMPLOYMENT IN MALAYSIA")
+                                
+                                # UNSUITABLE Checkbox (empty)
+                                pdf.rect(148, y + 4, 3, 3)
+                                
+                                # SUITABLE Checkbox (checked with a tick)
+                                pdf.rect(178, y + 4, 3, 3)
+                                pdf.set_xy(178, y + 2.5)
+                                pdf.set_font("Arial", 'B', 7)
+                                pdf.cell(3, 6, "v", align='C')
+                                
+                                pdf.set_y(y + 16)
+                                y = pdf.get_y()
+                                pdf.set_font("Arial", 'B', 8)
+                                pdf.set_xy(10, y)
+                                pdf.cell(10, 4, "24.")
+                                pdf.set_xy(20, y)
+                                pdf.multi_cell(110, 4, "Comments (refer to Part V - Item 16)\n-")
+                                
+                                # footer (Page: 1 of 7)
+                                pdf.set_y(270)
+                                pdf.set_font("Arial", 'I', 10)
+                                pdf.cell(0, 10, "Page: 1 of 7", align='C')
+                                
+                                pdf_bytes = pdf.output(dest='S').encode('latin1')
+                                filename = f"Medical_Report_{full_name}.pdf"
+                                zf.writestr(filename, pdf_bytes)
+                        
+                        st.success("All medical reports generated successfully!")
+                        st.download_button("⬇️ Download All Medical Reports (ZIP)", data=zip_buffer.getvalue(), file_name="medical_reports.zip", mime="application/zip")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
