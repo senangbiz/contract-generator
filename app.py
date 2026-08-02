@@ -148,7 +148,7 @@ elif page == "Medical Report Generator":
             st.success("File uploaded successfully! Here is a preview of your data:")
             st.dataframe(df.head())
             
-            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'Date of Birth', 'Gender', 'Sector', 'E-pass Issue Date']
+            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'Date of Birth', 'Gender', 'Sector']
             missing_columns = [col for col in required_columns if col not in df.columns]
             
             if missing_columns:
@@ -250,15 +250,8 @@ elif page == "Medical Report Generator":
                                 pdf.cell(45, 6, ": E6ED012445")
                                 
                                 # Date Calculations
-                                try:
-                                    epass_date = pd.to_datetime(row.get('E-pass Issue Date'))
-                                    cert_date = epass_date - pd.Timedelta(days=14)
-                                    exam_date = cert_date - pd.Timedelta(days=1)
-                                    cert_date_str = cert_date.strftime("%d/%m/%Y")
-                                    exam_date_str = exam_date.strftime("%d/%m/%Y")
-                                except:
-                                    cert_date_str = "-"
-                                    exam_date_str = "-"
+                                cert_date_str = "16/06/2026"
+                                exam_date_str = "15/06/2026"
                                     
                                 # Row 5
                                 y += 8
