@@ -280,12 +280,12 @@ elif page == "Medical Report Generator":
                                 pdf.set_xy(col1_val_x, y)
                                 pdf.cell(45, 6, ": -")
                                 
-                                pdf.set_y(y + 15)
+                                pdf.set_y(y + 10)
                                 
                                 # 5. PART II
                                 pdf.set_font("Arial", 'BU', 10)
                                 pdf.cell(0, 6, "PART II. MEDICAL HISTORY", ln=True, align='C')
-                                pdf.ln(5)
+                                pdf.ln(3)
                                 
                                 pdf.set_font("Arial", 'B', 8)
                                 pdf.cell(100, 6, "1.       CATEGORY 1 DISEASES")
@@ -324,7 +324,7 @@ elif page == "Medical Report Generator":
                                     
                                     pdf.ln(5)
                                 
-                                pdf.ln(5)
+                                pdf.ln(2)
                                 pdf.set_font("Arial", 'B', 8)
                                 pdf.cell(0, 5, "Note:", ln=True)
                                 pdf.set_font("Arial", 'B', 7)
@@ -333,10 +333,10 @@ elif page == "Medical Report Generator":
                                 pdf.cell(0, 4, "show any clinical evidence of the above and the blood test results are negative, the foreign worker is deemed to be suitable for employment in Malaysia.", ln=True)
                                 
                                 # 6. PART V
-                                pdf.ln(10)
+                                pdf.ln(5)
                                 pdf.set_font("Arial", 'BU', 10)
                                 pdf.cell(0, 6, "PART V: CERTIFICATION BY DOCTOR (cont'd)", ln=True, align='C')
-                                pdf.ln(5)
+                                pdf.ln(3)
                                 
                                 y = pdf.get_y()
                                 pdf.set_font("Arial", 'B', 7)
@@ -354,13 +354,13 @@ elif page == "Medical Report Generator":
                                 pdf.multi_cell(110, 4, "AFTER REVIEWING THE MEDICAL EXAMINATION REPORT,\nI HEREBY CERTIFY THIS FOREIGN WORKER TO BE\nMEDICALLY FOR EMPLOYMENT IN MALAYSIA")
                                 
                                 # UNSUITABLE Checkbox (empty)
-                                pdf.rect(148, y + 4, 3, 3)
+                                pdf.rect(148.5, y + 4, 3, 3)
                                 
                                 # SUITABLE Checkbox (checked with a tick)
-                                pdf.rect(178, y + 4, 3, 3)
-                                pdf.set_xy(178, y + 2.5)
+                                pdf.rect(178.5, y + 4, 3, 3)
+                                pdf.set_xy(178.5, y + 2.5)
                                 pdf.set_font("Arial", 'B', 7)
-                                pdf.cell(3, 6, "v", align='C')
+                                pdf.cell(3, 6, "X", align='C')
                                 
                                 pdf.set_y(y + 16)
                                 y = pdf.get_y()
@@ -370,10 +370,10 @@ elif page == "Medical Report Generator":
                                 pdf.set_xy(20, y)
                                 pdf.multi_cell(110, 4, "Comments (refer to Part V - Item 16)\n-")
                                 
-                                # footer (Page: 1 of 7)
+                                # footer (Page: 1 of 1)
                                 pdf.set_y(270)
                                 pdf.set_font("Arial", 'I', 10)
-                                pdf.cell(0, 10, "Page: 1 of 7", align='C')
+                                pdf.cell(0, 10, f"Page: {pdf.page_no()}", align='C')
                                 
                                 pdf_bytes = pdf.output(dest='S').encode('latin1')
                                 filename = f"Medical_Report_{full_name}.pdf"
