@@ -161,7 +161,7 @@ elif page == "Medical Report Generator":
                             for index, row in df.iterrows():
                                 pdf = FPDF()
                                 pdf.add_page()
-                                pdf.set_auto_page_break(auto=True, margin=15)
+                                pdf.set_auto_page_break(auto=False)
                                 
                                 # 1. Header FOMEMA
                                 pdf.set_font("Arial", 'BI', 24)
@@ -373,7 +373,7 @@ elif page == "Medical Report Generator":
                                 pdf.set_font("Arial", 'B', 7)
                                 pdf.cell(3, 6, "X", align='C')
                                 
-                                pdf.set_y(y + 16)
+                                pdf.set_y(y + 14)
                                 y = pdf.get_y()
                                 pdf.set_font("Arial", 'B', 8)
                                 pdf.set_xy(10, y)
@@ -382,7 +382,7 @@ elif page == "Medical Report Generator":
                                 pdf.multi_cell(110, 4, "Comments (refer to Part V - Item 16)\n-")
                                 
                                 # footer (Page: 1 of 1)
-                                pdf.set_y(270)
+                                pdf.set_y(282)
                                 pdf.set_font("Arial", 'I', 10)
                                 pdf.cell(0, 10, f"Page: {pdf.page_no()}", align='C')
                                 
