@@ -4,6 +4,9 @@ from fpdf import FPDF
 # 1. Load the Excel file
 df = pd.read_excel("add 15 workers.xlsx")
 
+# Clean up column names by removing asterisks and extra spaces
+df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+
 # 2. Define the contract template with placeholders
 template_text = """EMPLOYMENT CONTRACT
 This agreement is made and entered on 1 January 2025 between ARIANA GLOBAL Malaysia,

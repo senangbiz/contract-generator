@@ -62,6 +62,10 @@ if uploaded_file is not None:
     # Load the excel file
     try:
         df = pd.read_excel(uploaded_file)
+        
+        # Clean up column names by removing asterisks and extra spaces
+        df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+        
         st.success("File uploaded successfully! Here is a preview of your data:")
         st.dataframe(df.head())
         
