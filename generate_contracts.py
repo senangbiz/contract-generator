@@ -54,18 +54,19 @@ for index, row in df.iterrows():
     pdf.set_font("Arial", size=11)
     
     # Format the template with the data from the current Excel row
+    full_name = f"{row['First Name']} {row['Last Name']}"
     contract_content = template_text.format(
-        name=row['Name'],
+        name=full_name,
         nationality=row['Nationality'],
         passport=row['Passport No'],
-        place_of_issue=row['Place of issue'],
-        date_of_issue=row['Date of issue']
+        place_of_issue=row['Nationality'],
+        date_of_issue=row['Passport Issue Date']
     )
     
     # Write the formatted text to the PDF
     pdf.multi_cell(0, 6, contract_content)
     
     # Save the new PDF document
-    filename = f"Employment_Contract_{row['Name']}.pdf"
+    filename = f"Employment_Contract_{full_name}.pdf"
     pdf.output(filename)
     print(f"Successfully generated: {filename}")

@@ -66,7 +66,7 @@ if uploaded_file is not None:
         st.dataframe(df.head())
         
         # Check for required columns
-        required_columns = ['Name', 'Nationality', 'Passport No', 'Place of issue', 'Date of issue']
+        required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'Passport Issue Date']
         missing_columns = [col for col in required_columns if col not in df.columns]
         
         if missing_columns:
@@ -83,13 +83,14 @@ if uploaded_file is not None:
                             pdf.add_page()
                             pdf.set_font("Arial", size=11)
                             
+                            full_name = f"{row['First Name']} {row['Last Name']}"
                             # Format template
                             contract_content = template_text.format(
-                                name=row['Name'],
+                                name=full_name,
                                 nationality=row['Nationality'],
                                 passport=row['Passport No'],
-                                place_of_issue=row['Place of issue'],
-                                date_of_issue=row['Date of issue']
+                                place_of_issue=row['Nationality'],
+                                date_of_issue=row['Passport Issue Date']
                             )
                             
                             # Write formatted text to PDF
@@ -98,7 +99,7 @@ if uploaded_file is not None:
                             # Get the PDF content as a string (latin1 encoding is standard for fpdf 1.7)
                             pdf_bytes = pdf.output(dest='S').encode('latin1')
                             
-                            filename = f"Employment_Contract_{row['Name']}.pdf"
+                            filename = f"Employment_Contract_{full_name}.pdf"
                             # Add to zip file
                             zf.writestr(filename, pdf_bytes)
                     
