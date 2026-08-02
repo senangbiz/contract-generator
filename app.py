@@ -249,6 +249,17 @@ elif page == "Medical Report Generator":
                                 pdf.set_xy(col2_val_x, y)
                                 pdf.cell(45, 6, ": E6ED012445")
                                 
+                                # Date Calculations
+                                try:
+                                    epass_date = pd.to_datetime(row.get('E-pass Issue Date'))
+                                    cert_date = epass_date - pd.Timedelta(days=14)
+                                    exam_date = cert_date - pd.Timedelta(days=1)
+                                    cert_date_str = cert_date.strftime("%d/%m/%Y")
+                                    exam_date_str = exam_date.strftime("%d/%m/%Y")
+                                except:
+                                    cert_date_str = "-"
+                                    exam_date_str = "-"
+                                    
                                 # Row 5
                                 y += 8
                                 pdf.set_xy(col1_x, y)
@@ -259,7 +270,7 @@ elif page == "Medical Report Generator":
                                 pdf.set_xy(col2_x, y)
                                 pdf.cell(45, 6, "Physical Examination Date")
                                 pdf.set_xy(col2_val_x, y)
-                                pdf.cell(45, 6, ": 15/06/2026")
+                                pdf.cell(45, 6, f": {exam_date_str}")
                                 
                                 # Row 6
                                 y += 8
@@ -270,14 +281,6 @@ elif page == "Medical Report Generator":
                                 
                                 pdf.set_xy(col2_x, y)
                                 pdf.cell(45, 6, "Certification Date")
-                                
-                                try:
-                                    epass_date = pd.to_datetime(row.get('E-pass Issue Date'))
-                                    cert_date = epass_date - pd.Timedelta(days=14)
-                                    cert_date_str = cert_date.strftime("%d/%m/%Y")
-                                except:
-                                    cert_date_str = "-"
-                                    
                                 pdf.set_xy(col2_val_x, y)
                                 pdf.cell(45, 6, f": {cert_date_str}")
                                 
