@@ -397,6 +397,15 @@ elif page == "Insurance Generator":
     alamat_majikan = st.text_area("Alamat")
     tarikh_mula_input = st.date_input("Tarikh Perlindungan (Mula)")
     
+    coverage_period = st.radio("Tempoh Perlindungan", ["1 Tahun", "6 Bulan"])
+    mula_dt = pd.to_datetime(tarikh_mula_input)
+    if coverage_period == "1 Tahun":
+        tarikh_tamat_dt = mula_dt + pd.DateOffset(years=1)
+    else:
+        tarikh_tamat_dt = mula_dt + pd.DateOffset(months=6)
+        
+    st.text_input("Tarikh Perlindungan (Tamat)", value=tarikh_tamat_dt.strftime("%Y-%m-%d"), disabled=True)
+    
     uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="insurance_upload")
 
     if uploaded_file is not None and nama_majikan and alamat_majikan:
@@ -522,7 +531,7 @@ elif page == "Insurance Generator":
                                 pdf.cell(0, 8, "Tarikh Perlindungan Polisi (Tamat)", border=1, ln=True, align='C')
                                 
                                 # Table values
-                                tamat_date = e_pass_date + pd.DateOffset(years=1)
+                                tamat_date = tarikh_tamat_dt
                                 malay_months = {
                                     'JANUARY': 'JANUARI', 'FEBRUARY': 'FEBRUARI', 'MARCH': 'MAC', 'APRIL': 'APRIL',
                                     'MAY': 'MEI', 'JUNE': 'JUN', 'JULY': 'JULAI', 'AUGUST': 'OGOS',
