@@ -9,7 +9,7 @@ import string
 st.set_page_config(page_title="Generator Dashboard", page_icon="📄", layout="wide")
 
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator", "Salary Generator", "EPF Generator"])
+page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator", "Salary Generator", "EPF Generator", "SOCSO Generator"])
 
 if page == "Contract Generator":
     st.title("📄 Worker Contract Generator")
@@ -900,6 +900,253 @@ elif page == "EPF Generator":
                             label="⬇️ Download EPF PDF",
                             data=pdf_bytes,
                             file_name="EPF_Statement.pdf",
+                            mime="application/pdf"
+                        )
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+elif page == "SOCSO Generator":
+    st.title("🛡️ SOCSO Generator")
+    st.write("Upload your Excel file to generate the SOCSO (Borang 8A) statement.")
+
+    # UI Inputs
+    nama_alamat_majikan = st.text_area("Nama dan Alamat Majikan", height=120)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+        month_sel = st.selectbox("Caruman Gaji Bulan (Month)", months, index=4) # Default 05
+    with col2:
+        years = [str(y) for y in range(2025, 2031)]
+        year_sel = st.selectbox("Caruman Gaji Tahun (Year)", years, index=1) # Default 2026
+        
+    salary = st.number_input("Salary", min_value=0.00, value=1700.00, format="%.2f")
+    
+    uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="socso_upload")
+
+    if uploaded_file is not None and nama_alamat_majikan:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+            
+            st.success("File uploaded successfully! Preview:")
+            st.dataframe(df.head())
+            
+            required_columns = ['First Name', 'Last Name', 'Passport No']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
+            else:
+                if st.button("Generate SOCSO PDF"):
+                    with st.spinner("Generating SOCSO statement..."):
+                        pdf = FPDF(orientation='P', unit='mm', format='A4')
+                        pdf.add_page()
+                        pdf.set_auto_page_break(auto=True, margin=15)
+                        
+                        # Header
+                        pdf.set_font("Arial", 'B', 12)
+                        pdf.cell(0, 6, "PERTUBUHAN KESELAMATAN SOSIAL", align='C')
+                        pdf.set_xy(160, 10)
+                        pdf.cell(40, 6, "2346249101", align='R')
+                        pdf.ln(6)
+                        
+                        pdf.set_font("Arial", 'B', 9)
+                        pdf.cell(0, 5, "PERATURAN - PERATURAN (AM) KESELAMATAN SOSIAL PEKERJA 1971 (PER. 44A)", ln=True, align='C')
+                        
+                        pdf.set_font("Arial", 'B', 11)
+                        pdf.cell(150, 6, f"CARUMAN GAJI BULAN    [ {month_sel} ]   [ {year_sel} ]", align='C')
+                        pdf.cell(40, 6, "BORANG 8A", ln=True, align='R')
+                        
+                        pdf.set_font("Arial", '', 7)
+                        pdf.cell(150, 4, "                                                                      bulan             tahun", align='C')
+                        pdf.ln(5)
+                        
+                        # Top boxes table
+                        pdf.set_font("Arial", 'B', 9)
+                        pdf.cell(50, 5, "No. Kod Majikan", border=1, align='C')
+                        pdf.cell(100, 5, "No. MyCoID / No. Pendaftaran Perniagaan", border=1, align='C')
+                        pdf.cell(40, 5, "Amaun Caruman (RM)", border=1, ln=True, align='C')
+                        
+                        pdf.set_font("Arial", '', 10)
+                        pdf.cell(50, 7, "B 1 2 3 4 5 6 7 8 9 1 Y", border=1, align='C')
+                        pdf.cell(100, 7, "", border=1, align='C')
+                        pdf.cell(40, 7, "", border=1, ln=True, align='C')
+                        
+                        pdf.set_font("Arial", 'B', 8)
+                        pdf.cell(0, 5, "Amaun caruman di atas hendaklah dibayar kepada PERKESO/EJEN PEMUNGUT tidak lewat daripada", border=1, ln=True, align='L')
+                        
+                        # Middle Info Box
+                        y_mid = pdf.get_y()
+                        pdf.rect(10, y_mid, 130, 40)
+                        
+                        pdf.set_font("Arial", 'B', 9)
+                        pdf.set_xy(10, y_mid)
+                        pdf.cell(130, 5, " Nama dan Alamat Majikan", border='B')
+                        
+                        pdf.set_xy(12, y_mid + 6)
+                        pdf.set_font("Arial", '', 9)
+                        pdf.multi_cell(125, 4, nama_alamat_majikan)
+                        
+                        # Right side boxes
+                        pdf.set_xy(140, y_mid)
+                        pdf.cell(30, 5, "Lembaran", border=1, align='C')
+                        pdf.cell(20, 5, "Bil. Pekerja", border=1, align='C')
+                        
+                        pdf.set_xy(140, y_mid + 5)
+                        pdf.set_font("Arial", '', 10)
+                        pdf.cell(30, 7, "1 / 1", border=1, align='C')
+                        pdf.cell(20, 7, f"{len(df)}", border=1, align='C')
+                        
+                        # Kegunaan Ejen Pemungut
+                        pdf.set_xy(140, y_mid + 12)
+                        pdf.set_font("Arial", 'B', 8)
+                        pdf.cell(50, 28, "", border=1)
+                        pdf.set_xy(140, y_mid + 12)
+                        pdf.cell(50, 4, "Kegunaan Ejen Pemungut", align='C')
+                        
+                        pdf.set_xy(142, y_mid + 16)
+                        pdf.set_font("Arial", '', 8)
+                        pdf.cell(50, 4, "Cop")
+                        
+                        pdf.set_xy(142, y_mid + 30)
+                        pdf.cell(50, 4, "No. Slip Bayaran")
+                        pdf.rect(142, y_mid + 34, 46, 5)
+                        
+                        pdf.set_y(y_mid + 40)
+                        
+                        # Table Headers
+                        pdf.set_font("Arial", 'B', 6)
+                        w = [25, 10, 35, 90, 30]
+                        h_header = 12
+                        
+                        y_h = pdf.get_y()
+                        pdf.rect(10, y_h, 190, h_header)
+                        
+                        x_curr = 10
+                        for width in w[:-1]:
+                            x_curr += width
+                            pdf.line(x_curr, y_h, x_curr, y_h + h_header)
+                            
+                        pdf.set_xy(10, y_h)
+                        pdf.cell(w[0], 4, "TARIKH", align='C')
+                        pdf.set_xy(10, y_h + 4)
+                        pdf.cell(w[0], 4, "MULA/BERHENTI KERJA", align='C')
+                        pdf.set_xy(10, y_h + 8)
+                        pdf.cell(w[0], 4, "(hhbbtttt) (1)", align='C')
+                        
+                        pdf.set_xy(10 + w[0], y_h)
+                        pdf.cell(w[1], h_header/2, "STATUS", align='C')
+                        pdf.set_xy(10 + w[0], y_h + h_header/2)
+                        pdf.cell(w[1], h_header/2, "(2)", align='C')
+                        
+                        pdf.set_xy(10 + w[0] + w[1], y_h + 2)
+                        pdf.cell(w[2], 4, "NO. KAD PENGENALAN", align='C')
+                        pdf.set_xy(10 + w[0] + w[1], y_h + 6)
+                        pdf.cell(w[2], 4, "(3)", align='C')
+                        
+                        pdf.set_xy(10 + w[0] + w[1] + w[2], y_h + 2)
+                        pdf.cell(w[3], 4, "NAMA PEKERJA (MENGIKUT KAD PENGENALAN)", align='C')
+                        pdf.set_xy(10 + w[0] + w[1] + w[2], y_h + 6)
+                        pdf.cell(w[3], 4, "(4)", align='C')
+                        
+                        pdf.set_xy(10 + sum(w[:-1]), y_h)
+                        pdf.cell(w[4], 4, "CARUMAN (5)", border='B', align='C')
+                        pdf.set_xy(10 + sum(w[:-1]), y_h + 4)
+                        pdf.cell(w[4]/2, 4, "RM", align='C')
+                        pdf.set_xy(10 + sum(w[:-1]) + w[4]/2, y_h + 4)
+                        pdf.cell(w[4]/2, 4, "SEN", align='C')
+                        pdf.line(10 + sum(w[:-1]) + w[4]/2, y_h + 4, 10 + sum(w[:-1]) + w[4]/2, y_h + h_header)
+                        
+                        pdf.set_y(y_h + h_header)
+                        
+                        # Table Body
+                        pdf.set_font("Arial", '', 8)
+                        
+                        caruman_amount = float(salary) * 0.0125
+                        caruman_str = f"{caruman_amount:.2f}"
+                        rm_str = caruman_str.split('.')[0]
+                        sen_str = caruman_str.split('.')[1]
+                        
+                        default_date = f"29/{month_sel}/{year_sel}"
+                        
+                        for i, row in df.iterrows():
+                            full_name = f"{row.get('First Name', '')} {row.get('Last Name', '')}".strip()
+                            passport_no = str(row.get('Passport No', ''))
+                            
+                            y_row = pdf.get_y()
+                            pdf.rect(10, y_row, 190, 6)
+                            
+                            x_curr = 10
+                            for width in w[:-1]:
+                                x_curr += width
+                                pdf.line(x_curr, y_row, x_curr, y_row + 6)
+                                
+                            pdf.line(10 + sum(w[:-1]) + w[4]/2, y_row, 10 + sum(w[:-1]) + w[4]/2, y_row + 6)
+                            
+                            pdf.set_xy(10, y_row)
+                            pdf.cell(w[0], 6, default_date, align='C')
+                            pdf.set_xy(10 + w[0], y_row)
+                            pdf.cell(w[1], 6, "", align='C')
+                            pdf.set_xy(10 + w[0] + w[1], y_row)
+                            pdf.cell(w[2], 6, passport_no, align='L')
+                            pdf.set_xy(10 + w[0] + w[1] + w[2], y_row)
+                            pdf.cell(w[3], 6, " " + full_name[:50], align='L')
+                            
+                            pdf.set_xy(10 + sum(w[:-1]), y_row)
+                            pdf.cell(w[4]/2, 6, rm_str, align='C')
+                            pdf.set_xy(10 + sum(w[:-1]) + w[4]/2, y_row)
+                            pdf.cell(w[4]/2, 6, sen_str, align='C')
+                            
+                            pdf.set_y(y_row + 6)
+                        
+                        # Pad empty rows
+                        empty_rows = 15 - len(df)
+                        if empty_rows < 5:
+                            empty_rows = 5
+                        for _ in range(empty_rows):
+                            y_row = pdf.get_y()
+                            if y_row > 260:
+                                break
+                            pdf.rect(10, y_row, 190, 6)
+                            x_curr = 10
+                            for width in w[:-1]:
+                                x_curr += width
+                                pdf.line(x_curr, y_row, x_curr, y_row + 6)
+                            pdf.line(10 + sum(w[:-1]) + w[4]/2, y_row, 10 + sum(w[:-1]) + w[4]/2, y_row + 6)
+                            pdf.set_y(y_row + 6)
+                            
+                        # Totals row
+                        y_row = pdf.get_y()
+                        pdf.rect(10, y_row, 190, 6)
+                        x_curr = 10
+                        for width in w[:-1]:
+                            x_curr += width
+                            pdf.line(x_curr, y_row, x_curr, y_row + 6)
+                        pdf.line(10 + sum(w[:-1]) + w[4]/2, y_row, 10 + sum(w[:-1]) + w[4]/2, y_row + 6)
+                        
+                        grand_total = float(salary) * 0.0125 * len(df)
+                        grand_str = f"{grand_total:.2f}"
+                        g_rm = grand_str.split('.')[0]
+                        g_sen = grand_str.split('.')[1]
+                        
+                        pdf.set_xy(10 + sum(w[:-2]), y_row)
+                        pdf.set_font("Arial", 'B', 8)
+                        pdf.cell(w[3], 6, "Jumlah muka surat ini    ", align='R')
+                        
+                        pdf.set_xy(10 + sum(w[:-1]), y_row)
+                        pdf.cell(w[4]/2, 6, g_rm, align='C')
+                        pdf.set_xy(10 + sum(w[:-1]) + w[4]/2, y_row)
+                        pdf.cell(w[4]/2, 6, g_sen, align='C')
+                        
+                        # Output
+                        pdf_bytes = pdf.output(dest='S').encode('latin1')
+                        
+                        st.success("SOCSO PDF generated successfully!")
+                        st.download_button(
+                            label="⬇️ Download SOCSO PDF",
+                            data=pdf_bytes,
+                            file_name=f"SOCSO_Statement_{month_sel}_{year_sel}.pdf",
                             mime="application/pdf"
                         )
         except Exception as e:
