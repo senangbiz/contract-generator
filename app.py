@@ -9,7 +9,7 @@ import string
 st.set_page_config(page_title="Generator Dashboard", page_icon="📄", layout="wide")
 
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator"])
+page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator", "Salary Generator"])
 
 if page == "Contract Generator":
     st.title("📄 Worker Contract Generator")
@@ -610,5 +610,105 @@ elif page == "Insurance Generator":
                         st.success("All insurance slips generated successfully!")
                         st.download_button("⬇️ Download All Insurance Slips (ZIP)", data=zip_buffer.getvalue(), file_name="insurance_slips.zip", mime="application/zip")
                         
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+elif page == "Salary Generator":
+    st.title("💰 Salary Generator")
+    st.write("Upload your Excel file to generate the monthly salary sheet.")
+
+    # UI Inputs
+    payment_amount = st.number_input("Payment Amount", min_value=0.00, value=1700.00, format="%.2f")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
+        month_sel = st.selectbox("Month", months, index=6) # Default JULY
+    with col2:
+        years = [str(y) for y in range(2025, 2031)]
+        year_sel = st.selectbox("Year", years, index=1) # Default 2026
+        
+    payment_desc = f"{month_sel} {year_sel}"
+    
+    crediting_date = st.date_input("Crediting Date")
+    crediting_date_str = crediting_date.strftime("%d/%m/%Y")
+    
+    uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="salary_upload")
+
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+            
+            st.success("File uploaded successfully! Preview:")
+            st.dataframe(df.head())
+            
+            required_columns = ['First Name', 'Last Name', 'Passport No']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
+            else:
+                if st.button("Generate Salary Excel"):
+                    with st.spinner("Generating Excel..."):
+                        excel_buffer = io.BytesIO()
+                        
+                        # Prepare data
+                        table_data = []
+                        for _, row in df.iterrows():
+                            full_name = f"{row.get('First Name', '')} {row.get('Last Name', '')}".strip()
+                            account_no = ''.join(random.choices(string.digits, k=12))
+                            
+                            table_data.append({
+                                "Beneficiary Name": full_name,
+                                "Beneficiary Bank": "MAYBANK",
+                                "Beneficiary Account No": account_no,
+                                "ID Type": "PASSPORT",
+                                "Passport Number": str(row.get('Passport No', '')),
+                                "Payment Amount": payment_amount,
+                                "Payment Reference": "SALARY",
+                                "Payment Description": payment_desc
+                            })
+                            
+                        df_table = pd.DataFrame(table_data)
+                        
+                        # Header information
+                        header_data = [
+                            ["Employer Info :", ""],
+                            ["Crediting Date (eg. dd/MM/yyyy)", crediting_date_str],
+                            ["Payment Reference", "SALARY"],
+                            ["Payment Description", payment_desc],
+                            ["Bulk Payment Type", "Salary"]
+                        ]
+                        df_header = pd.DataFrame(header_data)
+                        
+                        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                            # Write header info without column names
+                            df_header.to_excel(writer, index=False, header=False, startrow=0, sheet_name="Salary")
+                            
+                            # Write table data starting from row 6 (0-indexed -> 6 means 7th row)
+                            df_table.to_excel(writer, index=False, startrow=6, sheet_name="Salary")
+                            
+                            # Auto-adjust column widths
+                            worksheet = writer.sheets["Salary"]
+                            for col in worksheet.columns:
+                                max_length = 0
+                                column = col[0].column_letter # Get the column name
+                                for cell in col:
+                                    try:
+                                        if len(str(cell.value)) > max_length:
+                                            max_length = len(str(cell.value))
+                                    except:
+                                        pass
+                                adjusted_width = (max_length + 2)
+                                worksheet.column_dimensions[column].width = adjusted_width
+                        
+                        st.success("Salary Excel generated successfully!")
+                        st.download_button(
+                            label="⬇️ Download Salary Excel",
+                            data=excel_buffer.getvalue(),
+                            file_name=f"Salary_{month_sel}_{year_sel}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
         except Exception as e:
             st.error(f"An error occurred: {e}")
