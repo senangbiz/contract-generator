@@ -9,7 +9,7 @@ import string
 st.set_page_config(page_title="Generator Dashboard", page_icon="📄", layout="wide")
 
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator", "Salary Generator"])
+page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator", "Salary Generator", "EPF Generator"])
 
 if page == "Contract Generator":
     st.title("📄 Worker Contract Generator")
@@ -709,6 +709,198 @@ elif page == "Salary Generator":
                             data=excel_buffer.getvalue(),
                             file_name=f"Salary_{month_sel}_{year_sel}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+elif page == "EPF Generator":
+    st.title("🏦 EPF Generator")
+    st.write("Upload your Excel file to generate the EPF contribution statement (Penyata Caruman).")
+
+    # UI Inputs
+    nama_majikan = st.text_input("Nama Majikan")
+    alamat_majikan = st.text_area("Alamat Majikan")
+    tarikh = st.date_input("Tarikh")
+    tarikh_str = tarikh.strftime("%d/%m/%Y")
+    salary = st.number_input("Salary", min_value=0.00, value=1700.00, format="%.2f")
+    
+    uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="epf_upload")
+
+    if uploaded_file is not None and nama_majikan and alamat_majikan:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+            
+            st.success("File uploaded successfully! Preview:")
+            st.dataframe(df.head())
+            
+            required_columns = ['First Name', 'Last Name', 'Passport No']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
+            else:
+                if st.button("Generate EPF PDF"):
+                    with st.spinner("Generating EPF statement..."):
+                        pdf = FPDF(orientation='P', unit='mm', format='A4')
+                        pdf.add_page()
+                        pdf.set_auto_page_break(auto=True, margin=15)
+                        
+                        # Header
+                        pdf.set_font("Arial", 'B', 14)
+                        pdf.cell(0, 6, "KUMPULAN WANG SIMPANAN PEKERJA", ln=True, align='C')
+                        pdf.cell(0, 6, "PENYATA CARUMAN", ln=True, align='C')
+                        pdf.set_font("Arial", '', 10)
+                        pdf.cell(0, 6, "(Untuk Simpanan Majikan)", ln=True, align='C')
+                        month_year = tarikh.strftime("%m/%Y")
+                        pdf.cell(0, 6, f"Caruman bulan {month_year} yang telah diproses", ln=True, align='C')
+                        pdf.ln(10)
+                        
+                        # Box for Majikan Info
+                        y_before = pdf.get_y()
+                        pdf.rect(10, y_before, 190, 45) # Draw a big box
+                        
+                        pdf.set_xy(12, y_before + 5)
+                        pdf.set_font("Arial", '', 10)
+                        
+                        pdf.cell(40, 5, "No. Rujukan Majikan", align='L')
+                        pdf.cell(5, 5, ":")
+                        pdf.cell(50, 5, "023456779")
+                        
+                        pdf.set_xy(140, y_before + 5)
+                        pdf.cell(20, 5, "Tarikh :")
+                        pdf.cell(30, 5, tarikh_str)
+                        
+                        pdf.set_xy(12, y_before + 12)
+                        pdf.cell(40, 5, "Nama Majikan")
+                        pdf.cell(5, 5, ":")
+                        pdf.cell(50, 5, nama_majikan)
+                        
+                        pdf.set_xy(12, y_before + 19)
+                        pdf.cell(40, 5, "Alamat Najikan")
+                        pdf.cell(5, 5, ":")
+                        
+                        pdf.set_xy(57, y_before + 19)
+                        pdf.multi_cell(80, 5, alamat_majikan)
+                        
+                        # Add Bil Pekerja right aligned
+                        pdf.set_xy(150, y_before + 38)
+                        pdf.cell(40, 5, f"Bil. Pekerja : {len(df)}", align='R')
+                        
+                        pdf.set_y(y_before + 50)
+                        
+                        # Table Header
+                        pdf.set_font("Arial", 'B', 8)
+                        
+                        # Heights and Widths
+                        col_w = [10, 25, 30, 75, 25, 25] # Total = 190
+                        h = 10
+                        
+                        y_header = pdf.get_y()
+                        pdf.set_xy(10, y_header)
+                        pdf.cell(col_w[0], h, "BIL", border=1, align='C')
+                        
+                        x = 10 + col_w[0]
+                        pdf.set_xy(x, y_header)
+                        pdf.cell(col_w[1], h/2, "NO. AHLI", border='LTR', align='C')
+                        pdf.set_xy(x, y_header + h/2)
+                        pdf.cell(col_w[1], h/2, "KWSP", border='LBR', align='C')
+                        
+                        x += col_w[1]
+                        pdf.set_xy(x, y_header)
+                        pdf.cell(col_w[2], h/2, "NO. PENGENALAN", border='LTR', align='C')
+                        pdf.set_xy(x, y_header + h/2)
+                        pdf.cell(col_w[2], h/2, "DIRI", border='LBR', align='C')
+                        
+                        x += col_w[2]
+                        pdf.set_xy(x, y_header)
+                        pdf.cell(col_w[3], h/2, "NAMA PEKERJA 1 AHLI", border='LTR', align='C')
+                        pdf.set_font("Arial", '', 7)
+                        pdf.set_xy(x, y_header + h/2)
+                        pdf.cell(col_w[3], h/2, "(Seperti terdapat dl dalam Dokumen)", border='LBR', align='C')
+                        pdf.set_font("Arial", 'B', 8)
+                        
+                        x += col_w[3]
+                        pdf.set_xy(x, y_header)
+                        pdf.cell(col_w[4] + col_w[5], h/2, "CARUMAN (RM)", border=1, align='C')
+                        pdf.set_xy(x, y_header + h/2)
+                        pdf.cell(col_w[4], h/2, "MAJIKAN", border=1, align='C')
+                        pdf.set_xy(x + col_w[4], y_header + h/2)
+                        pdf.cell(col_w[5], h/2, "PEKERJA", border=1, align='C')
+                        
+                        pdf.set_y(y_header + h)
+                        
+                        # Table Body
+                        pdf.set_font("Arial", '', 9)
+                        
+                        caruman_amount = float(salary) * 0.02
+                        caruman_str = f"{caruman_amount:.2f}"
+                        
+                        total_majikan = 0.0
+                        total_pekerja = 0.0
+                        
+                        for i, row in df.iterrows():
+                            full_name = f"{row.get('First Name', '')} {row.get('Last Name', '')}".strip()
+                            passport_no = str(row.get('Passport No', ''))
+                            kwsp_no = ''.join(random.choices(string.digits, k=8))
+                            
+                            total_majikan += caruman_amount
+                            total_pekerja += caruman_amount
+                            
+                            pdf.cell(col_w[0], 6, str(i+1), border=1, align='C')
+                            pdf.cell(col_w[1], 6, kwsp_no, border=1, align='C')
+                            pdf.cell(col_w[2], 6, passport_no, border=1, align='C')
+                            pdf.cell(col_w[3], 6, full_name[:45], border=1, align='L')
+                            pdf.cell(col_w[4], 6, caruman_str, border=1, align='R')
+                            pdf.cell(col_w[5], 6, caruman_str, border=1, align='R')
+                            pdf.ln()
+                            
+                        # Totals
+                        pdf.set_font("Arial", 'B', 9)
+                        pdf.cell(col_w[0]+col_w[1]+col_w[2]+col_w[3], 6, "JUMLAH (RM)", border=1, align='R')
+                        pdf.cell(col_w[4], 6, f"{total_majikan:.2f}", border=1, align='R')
+                        pdf.cell(col_w[5], 6, f"{total_pekerja:.2f}", border=1, align='R')
+                        pdf.ln()
+                        
+                        pdf.cell(col_w[0]+col_w[1]+col_w[2]+col_w[3]+col_w[4], 6, "JUMLAH BESAR (RM)", border=1, align='R')
+                        pdf.cell(col_w[5], 6, f"{total_majikan + total_pekerja:.2f}", border=1, align='R')
+                        pdf.ln(10)
+                        
+                        # Footer Notes
+                        pdf.set_font("Arial", 'B', 8)
+                        pdf.cell(0, 5, "CATATAN :", ln=True)
+                        pdf.set_font("Arial", '', 8)
+                        pdf.multi_cell(0, 4, "* Caruman tidak dapat dimasukkan ke akaun ahli kerana maklumat tidak lengkap. Sila rujuk Jadual Caruman Tanpa Maklumat Lengkap (KWSP 1314).")
+                        pdf.multi_cell(0, 4, "** Caruman tidak dapat dimasukkan ke akaun ahli kerana akaun ahli telah ditutup.")
+                        
+                        pdf.ln(2)
+                        pdf.set_font("Arial", 'B', 8)
+                        pdf.cell(0, 5, "PERHATIAN :", ln=True)
+                        pdf.set_font("Arial", '', 8)
+                        
+                        notes = [
+                            "1. Majikan hendaklah menyemak dan memastikan maklumat yang dicetak adalah betul. Jika terdapat kesilapan pada penyata ini, majikan hendaklah memberitahu KWSP secara bertulis dalam tempoh satu bulan dari tarikh penyata ini. Jika tiada bantahan diterima, caruman yang telah dimasukkan ke akaun ahli dianggap betul dan majikan adalah bertanggungjawab terhadap sebarang kesilapan.",
+                            "2. Ini adalah Penyata Caruman KWSP yang telah diproses. Penyata Caruman ini tidak boleh digunakan untuk pembayaran caruman KWSP. Bagi tujuan penghantaran Borang Caruman dan/atau bayaran, sila gunakan kemudahan e-Caruman (i-Akaun Majikan) atau lain-lain kemudahan secara elektronik.",
+                            "3. Caruman bulanan yang kena dibayar oleh majikan dan pekerja hendaklah tidak kurang daripada caruman minimum berdasarkan Perintah Caji Minimum yang berkuatkuasa selaras dengan Akta Majlis Perundingan Gaji Negara 2011."
+                        ]
+                        
+                        for note in notes:
+                            pdf.multi_cell(0, 4, note)
+                            pdf.ln(1)
+                            
+                        pdf.ln(2)
+                        pdf.set_font("Arial", 'I', 7)
+                        pdf.cell(0, 4, "Surat ini adalah cetakan komputer dan tidak memerlukan tandatangan.", border='T')
+                        
+                        # Output
+                        pdf_bytes = pdf.output(dest='S').encode('latin1')
+                        
+                        st.success("EPF PDF generated successfully!")
+                        st.download_button(
+                            label="⬇️ Download EPF PDF",
+                            data=pdf_bytes,
+                            file_name="EPF_Statement.pdf",
+                            mime="application/pdf"
                         )
         except Exception as e:
             st.error(f"An error occurred: {e}")
