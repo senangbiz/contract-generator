@@ -9,7 +9,7 @@ import string
 st.set_page_config(page_title="Generator Dashboard", page_icon="📄", layout="wide")
 
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator"])
+page = st.sidebar.radio("Select Tool:", ["Contract Generator", "Medical Report Generator", "Insurance Generator"])
 
 if page == "Contract Generator":
     st.title("📄 Worker Contract Generator")
@@ -385,5 +385,229 @@ elif page == "Medical Report Generator":
                         
                         st.success("All medical reports generated successfully!")
                         st.download_button("⬇️ Download All Medical Reports (ZIP)", data=zip_buffer.getvalue(), file_name="medical_reports.zip", mime="application/zip")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+elif page == "Insurance Generator":
+    st.title("🛡️ Insurance Slip Generator (SPIKPA)")
+    st.write("Upload your Excel file to generate SPIKPA insurance slips.")
+
+    st.info("The attached logo should be saved as 'logo.jpg' or 'logo.png' in the same folder as this app for it to appear in the PDF.")
+    
+    # UI Inputs
+    nama_majikan = st.text_input("Nama Majikan")
+    alamat_majikan = st.text_area("Alamat")
+    
+    uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="insurance_upload")
+
+    if uploaded_file is not None and nama_majikan and alamat_majikan:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = [str(col).replace('*', '').strip() for col in df.columns]
+            
+            st.success("File uploaded successfully! Preview:")
+            st.dataframe(df.head())
+            
+            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'E-pass Issue Date']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns in the Excel file: {', '.join(missing_columns)}")
+            else:
+                if st.button("Generate Insurance Slips"):
+                    with st.spinner("Generating insurance slips..."):
+                        zip_buffer = io.BytesIO()
+                        import datetime
+                        import os
+                        
+                        # Process dates
+                        df['E-pass Issue Date'] = pd.to_datetime(df['E-pass Issue Date'])
+                        
+                        # Chunking by 10
+                        chunk_size = 10
+                        chunks = [df[i:i + chunk_size] for i in range(0, df.shape[0], chunk_size)]
+                        
+                        with zipfile.ZipFile(zip_buffer, "w") as zf:
+                            for chunk_idx, chunk in enumerate(chunks):
+                                pdf = FPDF(orientation='P', unit='mm', format='A4')
+                                pdf.add_page()
+                                pdf.set_auto_page_break(auto=False)
+                                
+                                # Random Reference No
+                                ref_no = f"KKM{random.randint(1000000, 9999999)}"
+                                
+                                # First row info for top dates
+                                first_row = chunk.iloc[0]
+                                e_pass_date = first_row['E-pass Issue Date']
+                                date_dicetak = e_pass_date - pd.DateOffset(months=1)
+                                dicetak_str = date_dicetak.strftime("%d-%m-%Y")
+                                
+                                # 1. Header Right
+                                pdf.set_font("Arial", '', 9)
+                                pdf.cell(0, 5, "KKM/SPIKPA/SP/1/2011", ln=True, align='R')
+                                pdf.ln(2)
+                                
+                                # 2. Box Title
+                                pdf.set_font("Arial", 'B', 10)
+                                pdf.cell(0, 8, "SLIP PENGESAHAN SKIM PERLINDUNGAN INSURANS KESIHATAN PEKERJA ASING(SPIKPA)", border=1, ln=True, align='C')
+                                pdf.ln(3)
+                                
+                                # 3. Logo and Company Info
+                                logo_path = None
+                                if os.path.exists("logo.jpg"):
+                                    logo_path = "logo.jpg"
+                                elif os.path.exists("logo.png"):
+                                    logo_path = "logo.png"
+                                    
+                                y_logo = pdf.get_y()
+                                if logo_path:
+                                    pdf.image(logo_path, x=15, y=y_logo, w=30)
+                                    
+                                pdf.set_xy(50, y_logo)
+                                pdf.set_font("Arial", 'B', 9)
+                                pdf.cell(0, 5, "ProtectHealth Corporation Sdn Bhd (1212734-T)", ln=True)
+                                pdf.set_font("Arial", '', 8)
+                                pdf.set_x(50)
+                                pdf.cell(0, 4, "F01 & F02, Tingkat 1, Blok 2300, Century Square, Jalan Usahawan, 63000 Cyberjaya, Selangor, Malaysia.", ln=True)
+                                pdf.set_x(50)
+                                pdf.cell(0, 4, "No. Telefon : (603) 8687 4848 / (603) 8687 4888              Portal Web : www.spikpa.com.my", ln=True)
+                                pdf.set_font("Arial", 'I', 8)
+                                pdf.set_x(50)
+                                pdf.cell(0, 4, "[ Dilantik oleh Kementerian Kesihatan Malaysia sebagai Pembekal Perkhidmatan Elektronik (ESP) untuk", ln=True)
+                                pdf.set_x(50)
+                                pdf.cell(0, 4, "Skim Perlindungan Insurans Kesihatan Pekerja Asing (SPIKPA) ]", ln=True)
+                                
+                                pdf.ln(10)
+                                
+                                # 4. Info Section
+                                pdf.set_font("Arial", '', 10)
+                                
+                                # Row 1: No Ruj & Tarikh Dicetak
+                                y_info = pdf.get_y()
+                                pdf.set_xy(10, y_info)
+                                pdf.cell(35, 6, "No. Ruj. Slip SPIKPA")
+                                pdf.cell(5, 6, ":")
+                                pdf.cell(45, 6, ref_no)
+                                
+                                pdf.set_xy(105, y_info)
+                                pdf.cell(45, 6, "Tarikh Slip SPIKPA Dicetak")
+                                pdf.cell(5, 6, ":")
+                                pdf.cell(45, 6, dicetak_str)
+                                
+                                # Row 2: Nama Majikan
+                                pdf.set_xy(10, y_info + 8)
+                                pdf.cell(35, 6, "Nama Majikan")
+                                pdf.cell(5, 6, ":")
+                                pdf.cell(140, 6, nama_majikan)
+                                
+                                # Row 3: Alamat
+                                pdf.set_xy(10, y_info + 16)
+                                pdf.cell(35, 6, "Alamat")
+                                pdf.cell(5, 6, ":")
+                                
+                                # Multi-cell for address
+                                pdf.set_xy(50, y_info + 16)
+                                pdf.multi_cell(140, 5, alamat_majikan)
+                                
+                                # Adjust Y after multi_cell
+                                pdf.set_y(pdf.get_y() + 5)
+                                
+                                # 5. SKHPPA Table
+                                pdf.set_font("Arial", 'B', 9)
+                                pdf.cell(0, 8, "MAKLUMAT INSURANS SKIM KEMASUKAN HOSPITAL DAN PEMBEDAHAN PEKERJA ASING (SKHPPA)", border=1, ln=True, align='C')
+                                
+                                pdf.set_font("Arial", 'B', 8)
+                                pdf.cell(30, 8, "Nama Syarikat", border='L', align='C')
+                                pdf.cell(0, 8, "CHUBB INSURANCE MALAYSIA BERHAD (formerly known as ACE JERNEH INSURANCE BHD)", border='R', ln=True, align='L')
+                                pdf.cell(30, 4, "Ins.", border='LB', align='C')
+                                pdf.cell(0, 4, "", border='RB', ln=True)
+                                
+                                # Subheader
+                                pdf.cell(30, 8, "Kod Agen Ins.", border=1, align='C')
+                                pdf.cell(40, 8, "No. Polisi Ins.", border=1, align='C')
+                                pdf.cell(60, 8, "No.Pindaan / Endorsement", border=1, align='C')
+                                pdf.cell(0, 8, "Tarikh Perlindungan Polisi (Tamat)", border=1, ln=True, align='C')
+                                
+                                # Table values
+                                tamat_date = e_pass_date + pd.DateOffset(years=1)
+                                malay_months = {
+                                    'JANUARY': 'JANUARI', 'FEBRUARY': 'FEBRUARI', 'MARCH': 'MAC', 'APRIL': 'APRIL',
+                                    'MAY': 'MEI', 'JUNE': 'JUN', 'JULY': 'JULAI', 'AUGUST': 'OGOS',
+                                    'SEPTEMBER': 'SEPTEMBER', 'OCTOBER': 'OKTOBER', 'NOVEMBER': 'NOVEMBER', 'DECEMBER': 'DISEMBER'
+                                }
+                                month_eng = tamat_date.strftime("%B").upper()
+                                month_malay = malay_months.get(month_eng, month_eng)
+                                tamat_str_malay = f"{tamat_date.strftime('%d')} {month_malay} {tamat_date.strftime('%Y')}"
+                                
+                                pdf.set_font("Arial", '', 8)
+                                pdf.cell(30, 10, "N0189AHQ", border=1, align='C')
+                                pdf.cell(40, 10, "HQ-S1052525-SPA", border=1, align='C')
+                                pdf.cell(60, 10, "", border=1, align='C')
+                                pdf.cell(0, 10, tamat_str_malay, border=1, ln=True, align='C')
+                                
+                                pdf.ln(5)
+                                
+                                # 6. Worker Table
+                                pdf.set_font("Arial", 'B', 9)
+                                pdf.cell(0, 5, "SENARAI PEKERJA ASING", ln=True)
+                                pdf.cell(0, 5, "YANG DIINSURANSKAN", ln=True)
+                                
+                                pdf.cell(15, 8, "Bil.", border=1, align='C')
+                                pdf.cell(60, 8, "Nama", border=1, align='C')
+                                pdf.cell(40, 8, "Warganegara", border=1, align='C')
+                                pdf.cell(35, 8, "No. Pasport", border=1, align='C')
+                                pdf.cell(0, 8, "Tarikh Perlindungan(Mula)", border=1, ln=True, align='C')
+                                
+                                pdf.set_font("Arial", '', 8)
+                                for i, (_, row) in enumerate(chunk.iterrows(), start=1):
+                                    full_name = f"{row.get('First Name', '')} {row.get('Last Name', '')}".strip()
+                                    warganegara = str(row.get('Nationality', '')).upper()
+                                    pasport = str(row.get('Passport No', ''))
+                                    
+                                    mula_dt = pd.to_datetime(row.get('E-pass Issue Date', e_pass_date))
+                                    m_month = mula_dt.strftime("%B").upper()
+                                    m_month_my = malay_months.get(m_month, m_month)
+                                    mula_str = f"{mula_dt.strftime('%d')} {m_month_my} {mula_dt.strftime('%Y')}"
+                                    
+                                    pdf.cell(15, 8, str(i), border=1, align='C')
+                                    pdf.cell(60, 8, full_name[:35], border=1, align='L')
+                                    pdf.cell(40, 8, warganegara, border=1, align='L')
+                                    pdf.cell(35, 8, pasport, border=1, align='L')
+                                    pdf.cell(0, 8, mula_str, border=1, ln=True, align='C')
+                                    
+                                pdf.ln(10)
+                                
+                                # 7. Footer Boxes
+                                y_footer = pdf.get_y()
+                                
+                                # NOTIS PENTING Box
+                                pdf.set_xy(10, y_footer)
+                                pdf.set_font("Arial", 'B', 9)
+                                pdf.cell(90, 6, "NOTIS PENTING", border=1, align='L')
+                                pdf.set_xy(10, y_footer + 6)
+                                pdf.set_font("Arial", '', 8)
+                                pdf.rect(10, y_footer + 6, 90, 20)
+                                pdf.set_xy(12, y_footer + 8)
+                                pdf.multi_cell(86, 4, "Slip ini wajib disertakan bersama dengan polisi insurans SKHPPA asal (original) dan dokumen-dokumen keperluan lain bagi permohonan atau pembaharuan PLKS.")
+                                
+                                # AKUAN PENERIMAAN Box
+                                pdf.set_xy(110, y_footer)
+                                pdf.set_font("Arial", 'B', 9)
+                                pdf.cell(90, 6, "AKUAN PENERIMAAN", border=1, align='C')
+                                pdf.set_xy(110, y_footer + 6)
+                                pdf.rect(110, y_footer + 6, 90, 20)
+                                pdf.set_xy(110, y_footer + 12)
+                                pdf.cell(90, 6, "OLEH JABATAN IMIGRESEN MALAYSIA(JIM)", align='C')
+                                
+                                pdf_bytes = pdf.output(dest='S').encode('latin1')
+                                
+                                chunk_start = chunk_idx * chunk_size + 1
+                                chunk_end = chunk_start + len(chunk) - 1
+                                filename = f"Insurance_Slip_{chunk_start}_to_{chunk_end}.pdf"
+                                zf.writestr(filename, pdf_bytes)
+                        
+                        st.success("All insurance slips generated successfully!")
+                        st.download_button("⬇️ Download All Insurance Slips (ZIP)", data=zip_buffer.getvalue(), file_name="insurance_slips.zip", mime="application/zip")
+                        
         except Exception as e:
             st.error(f"An error occurred: {e}")
