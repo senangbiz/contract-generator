@@ -397,9 +397,6 @@ elif page == "Insurance Generator":
     alamat_majikan = st.text_area("Alamat")
     tarikh_mula_input = st.date_input("Tarikh Perlindungan (Mula)")
     
-    st.info("Upload the ProtectHealth logo below so it appears in the PDF.")
-    logo_file = st.file_uploader("Upload Logo Image", type=["png", "jpg", "jpeg"], key="logo_upload")
-    
     uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="insurance_upload")
 
     if uploaded_file is not None and nama_majikan and alamat_majikan:
@@ -429,13 +426,6 @@ elif page == "Insurance Generator":
                         chunk_size = 10
                         chunks = [df[i:i + chunk_size] for i in range(0, df.shape[0], chunk_size)]
                         
-                        # Save logo if uploaded
-                        logo_path = None
-                        if logo_file is not None:
-                            with open("temp_logo.jpg", "wb") as f:
-                                f.write(logo_file.getbuffer())
-                            logo_path = "temp_logo.jpg"
-                        
                         with zipfile.ZipFile(zip_buffer, "w") as zf:
                             for chunk_idx, chunk in enumerate(chunks):
                                 pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -461,11 +451,10 @@ elif page == "Insurance Generator":
                                 
                                 # 3. Logo and Company Info
                                 y_logo = pdf.get_y()
-                                if logo_path:
-                                    try:
-                                        pdf.image(logo_path, x=15, y=y_logo, w=30)
-                                    except:
-                                        pass
+                                
+                                pdf.set_xy(10, y_logo + 5)
+                                pdf.set_font("Arial", 'B', 14)
+                                pdf.cell(35, 5, "PROTECTHEALTH", align='L')
                                     
                                 pdf.set_xy(50, y_logo)
                                 pdf.set_font("Arial", 'B', 9)
