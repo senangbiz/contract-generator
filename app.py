@@ -392,11 +392,13 @@ elif page == "Insurance Generator":
     st.title("🛡️ Insurance Slip Generator (SPIKPA)")
     st.write("Upload your Excel file to generate SPIKPA insurance slips.")
 
-    st.info("The attached logo should be saved as 'logo.jpg' or 'logo.png' in the same folder as this app for it to appear in the PDF.")
-    
     # UI Inputs
     nama_majikan = st.text_input("Nama Majikan")
     alamat_majikan = st.text_area("Alamat")
+    tarikh_mula_input = st.date_input("Tarikh Perlindungan (Mula)")
+    
+    st.info("Upload the ProtectHealth logo below so it appears in the PDF.")
+    logo_file = st.file_uploader("Upload Logo Image", type=["png", "jpg", "jpeg"], key="logo_upload")
     
     uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], key="insurance_upload")
 
@@ -408,7 +410,7 @@ elif page == "Insurance Generator":
             st.success("File uploaded successfully! Preview:")
             st.dataframe(df.head())
             
-            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No', 'E-pass Issue Date']
+            required_columns = ['First Name', 'Last Name', 'Nationality', 'Passport No']
             missing_columns = [col for col in required_columns if col not in df.columns]
             
             if missing_columns:
@@ -421,11 +423,18 @@ elif page == "Insurance Generator":
                         import os
                         
                         # Process dates
-                        df['E-pass Issue Date'] = pd.to_datetime(df['E-pass Issue Date'])
+                        e_pass_date = pd.to_datetime(tarikh_mula_input)
                         
                         # Chunking by 10
                         chunk_size = 10
                         chunks = [df[i:i + chunk_size] for i in range(0, df.shape[0], chunk_size)]
+                        
+                        # Save logo if uploaded
+                        logo_path = None
+                        if logo_file is not None:
+                            with open("temp_logo.jpg", "wb") as f:
+                                f.write(logo_file.getbuffer())
+                            logo_path = "temp_logo.jpg"
                         
                         with zipfile.ZipFile(zip_buffer, "w") as zf:
                             for chunk_idx, chunk in enumerate(chunks):
@@ -437,8 +446,6 @@ elif page == "Insurance Generator":
                                 ref_no = f"KKM{random.randint(1000000, 9999999)}"
                                 
                                 # First row info for top dates
-                                first_row = chunk.iloc[0]
-                                e_pass_date = first_row['E-pass Issue Date']
                                 date_dicetak = e_pass_date - pd.DateOffset(months=1)
                                 dicetak_str = date_dicetak.strftime("%d-%m-%Y")
                                 
@@ -453,15 +460,12 @@ elif page == "Insurance Generator":
                                 pdf.ln(3)
                                 
                                 # 3. Logo and Company Info
-                                logo_path = None
-                                if os.path.exists("logo.jpg"):
-                                    logo_path = "logo.jpg"
-                                elif os.path.exists("logo.png"):
-                                    logo_path = "logo.png"
-                                    
                                 y_logo = pdf.get_y()
                                 if logo_path:
-                                    pdf.image(logo_path, x=15, y=y_logo, w=30)
+                                    try:
+                                        pdf.image(logo_path, x=15, y=y_logo, w=30)
+                                    except:
+                                        pass
                                     
                                 pdf.set_xy(50, y_logo)
                                 pdf.set_font("Arial", 'B', 9)
@@ -564,10 +568,9 @@ elif page == "Insurance Generator":
                                     warganegara = str(row.get('Nationality', '')).upper()
                                     pasport = str(row.get('Passport No', ''))
                                     
-                                    mula_dt = pd.to_datetime(row.get('E-pass Issue Date', e_pass_date))
-                                    m_month = mula_dt.strftime("%B").upper()
+                                    m_month = e_pass_date.strftime("%B").upper()
                                     m_month_my = malay_months.get(m_month, m_month)
-                                    mula_str = f"{mula_dt.strftime('%d')} {m_month_my} {mula_dt.strftime('%Y')}"
+                                    mula_str = f"{e_pass_date.strftime('%d')} {m_month_my} {e_pass_date.strftime('%Y')}"
                                     
                                     pdf.cell(15, 8, str(i), border=1, align='C')
                                     pdf.cell(60, 8, full_name[:35], border=1, align='L')
